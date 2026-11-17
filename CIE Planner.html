@@ -1,0 +1,473 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>CIE Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one calendar card beside a booking panel. Palette: blue-grey, lavender-grey, dusty rose, pale pink; booked days stay red. */
+:root {
+  --bg: #E4D8DC;
+  --surface: #FFF4F4;
+  --fg: #26343E;
+  --muted: #4A5963;
+  --line: #C9CCD5;
+  --accent: #93B5C6;
+  --on-accent: #1F2D36;
+  --accent-ink: #36596C;
+  --accent-soft: #DCE8EE;
+  --booked: #D92D20;
+  --on-booked: #FFFFFF;
+  --booked-soft: #FBD3CF;
+  --booked-ink: #8F1A12;
+  --gap-bg: #C9CCD5;
+  --gap-line: #A9AEBC;
+  color-scheme: light;
+  --font-display: 'Space Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1100px; margin: 0 auto; display: grid; gap: 40px; }
+h1, h2, h3 { font-family: var(--font-display); margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h1 { font-size: clamp(2rem, 4.5vw, 2.7rem); line-height: 1.1; font-weight: 700; }
+h2 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; }
+:focus-visible { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+
+/* Toolbar */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 16px; }
+.toolbar .grp { display: flex; align-items: center; gap: 10px; }
+.toolbar label, .toolbar .lbl { font-size: 13px; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; padding: 3px; background: var(--surface); }
+.seg button { border: 0; background: transparent; color: var(--muted); padding: 7px 16px; border-radius: 6px; font: inherit; font-weight: 500; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+select, input[type="text"], textarea {
+  width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg);
+  font: inherit; padding: 8px 10px;
+}
+.toolbar select { width: auto; }
+textarea { resize: vertical; min-height: 96px; }
+input[readonly] { background: var(--bg); color: var(--muted); }
+
+/* Layout */
+.layout { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.side { display: grid; gap: 16px; min-width: 0; }
+
+/* Calendar */
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.cal-head h2 { font-size: 1.3rem; }
+.cal-nav { display: flex; gap: 6px; }
+.btn, .navbtn {
+  border: 1px solid transparent; background: var(--accent); color: var(--on-accent); border-radius: 8px;
+  padding: 9px 14px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; text-align: center;
+}
+.btn.secondary, .navbtn { background: transparent; color: var(--fg); border-color: var(--line); }
+.btn.danger { background: transparent; color: var(--booked-ink); border-color: var(--booked); }
+.navbtn { padding: 6px 12px; font-weight: 500; }
+.btn:hover, .navbtn:hover { filter: brightness(0.96); }
+.weekdays, .grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.weekdays { margin-bottom: 4px; }
+.weekdays span { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; }
+.day {
+  position: relative; min-height: 60px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg);
+  padding: 6px 5px; text-align: left; font: inherit; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; cursor: pointer; min-width: 0;
+}
+@media (min-width: 640px) { .day { min-height: 88px; padding: 8px; } }
+.day .num { font-weight: 600; font-size: 13px; font-variant-numeric: tabular-nums; line-height: 1.4; }
+.day.today .num { background: var(--fg); color: var(--bg); border-radius: 999px; padding: 0 7px; }
+.day[data-state="free"]:hover { border-color: var(--accent); }
+.day[data-state="booked"] { background: var(--booked-soft); border-color: var(--booked); color: var(--booked-ink); }
+.day[data-state="gap"] {
+  background: repeating-linear-gradient(135deg, var(--gap-bg) 0 6px, var(--surface) 6px 12px);
+  border-color: var(--gap-line); color: var(--fg);
+}
+.day[data-state="past"], .day[data-state="closed"] { background: var(--bg); color: var(--muted); opacity: 0.55; cursor: default; }
+.day.sel { box-shadow: 0 0 0 2px var(--accent-ink); }
+.tag { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; background: var(--booked); color: var(--on-booked); border-radius: 4px; padding: 1px 5px; }
+.gaplbl { font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.sw { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); }
+.sw.bk { background: var(--booked-soft); border-color: var(--booked); }
+.sw.gp { background: repeating-linear-gradient(135deg, var(--gap-bg) 0 4px, var(--surface) 4px 8px); border-color: var(--gap-line); }
+
+/* Panel */
+.sub { color: var(--muted); margin-top: 4px; }
+.sub.ok { color: var(--accent-ink); font-weight: 500; }
+.sub.bk { color: var(--booked-ink); font-weight: 500; }
+.hint { font-size: 13px; color: var(--muted); margin: 10px 0 14px; }
+.notice { background: var(--accent-soft); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 14px; }
+.banner { background: var(--gap-bg); border: 1px solid var(--gap-line); border-radius: 8px; padding: 8px 10px; margin-bottom: 12px; font-size: 14px; }
+.link { background: none; border: 0; padding: 0; color: var(--accent-ink); text-decoration: underline; font: inherit; cursor: pointer; }
+.field { margin-top: 12px; }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.kv { display: grid; gap: 8px; margin: 12px 0; }
+.kv div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; font-weight: 500; text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.contact { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.contact .lbl { font-weight: 600; margin-bottom: 8px; }
+.contact .row { margin-top: 10px; }
+.mono { font-variant-numeric: tabular-nums; user-select: all; overflow-wrap: anywhere; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.chip { border: 1px solid var(--accent-ink); color: var(--accent-ink); background: transparent; border-radius: 999px; padding: 4px 12px; font: inherit; cursor: pointer; }
+.rules { margin: 14px 0 0; padding-left: 18px; color: var(--muted); display: grid; gap: 6px; font-size: 14px; }
+.nearest { margin-top: 14px; font-size: 13px; color: var(--muted); }
+
+/* List */
+.list { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.item { width: 100%; display: flex; align-items: center; gap: 12px; text-align: left; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--fg); padding: 8px 10px; font: inherit; cursor: pointer; }
+.item:hover { border-color: var(--accent); }
+.item .dt { display: grid; justify-items: center; min-width: 38px; line-height: 1.1; }
+.item .dt b { font-family: var(--font-display); font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.item .dt small { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.item .meta { display: grid; min-width: 0; flex: 1; }
+.item .meta span { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>CIE Planner</h1>
+  </header>
+
+  <section aria-label="CIE calendar prototype">
+    <div class="toolbar">
+      <div class="grp" role="group" aria-label="View as">
+        <span class="lbl">View as</span>
+        <div class="seg">
+          <button type="button" data-role="faculty" aria-pressed="true">Faculty</button>
+          <button type="button" data-role="student" aria-pressed="false">Student</button>
+        </div>
+      </div>
+      <div class="grp" id="teacherWrap">
+        <label for="teacherSel">Booking as</label>
+        <select id="teacherSel"></select>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="card">
+        <div class="cal-head">
+          <h2 id="monthLabel"></h2>
+          <div class="cal-nav">
+            <button type="button" class="navbtn" id="prev" aria-label="Previous month">&lsaquo;</button>
+            <button type="button" class="navbtn" id="todayBtn">Today</button>
+            <button type="button" class="navbtn" id="next" aria-label="Next month">&rsaquo;</button>
+          </div>
+        </div>
+        <div class="weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+        <div class="grid" id="grid"></div>
+        <div class="legend">
+          <span><i class="sw bk"></i>CIE booked</span>
+          <span><i class="sw gp"></i>Preparation gap</span>
+          <span><i class="sw"></i>Free to book</span>
+        </div>
+      </div>
+
+      <aside class="side">
+        <div class="card" id="panelCard"><div id="panel"></div></div>
+        <div class="card">
+          <h2 id="listTitle">All scheduled CIEs</h2>
+          <ul class="list" id="list"></ul>
+          <p class="hint" id="gapNote"></p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  var DAY = 86400000, GAP = 2;
+  var TEACHERS = [
+    { id: 'meera', name: 'Prof. Meera Nair', subject: 'Design Thinking', code: 'DT', email: 'meera.nair@rvu.edu.in' },
+    { id: 'arjun', name: 'Dr. Arjun Rao', subject: 'Marketing', code: 'MKT', email: 'arjun.rao@rvu.edu.in' },
+    { id: 'kavya', name: 'Prof. Kavya Iyer', subject: 'Statistics', code: 'STA', email: 'kavya.iyer@rvu.edu.in' },
+    { id: 'sana', name: 'Dr. Sana Sheikh', subject: 'Economics', code: 'ECO', email: 'sana.sheikh@rvu.edu.in' },
+    { id: 'daniel', name: 'Prof. Daniel Joseph', subject: 'English', code: 'ENG', email: 'daniel.joseph@rvu.edu.in' }
+  ];
+  var TYPES = ['Test', 'Assignment', 'Presentation'];
+  var RULES = '<ul class="rules"><li>Only one CIE can be booked per day.</li><li>The next 2 working days (Mon to Sat) stay closed, so students always get preparation time.</li><li>Day already taken? Message that teacher by email from here.</li></ul>';
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function key(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function parse(k) { var p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function dayNum(d) { return Math.floor(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / DAY); }
+  function dow(d) { return (dayNum(d) + 3) % 7; } /* Mon = 0 ... Sun = 6 */
+  function wd(d) { var n = dayNum(d), w = (n + 3) % 7; return w === 6 ? null : Math.floor((n + 3) / 7) * 6 + w; }
+  function addWd(d, n) {
+    var r = new Date(d.getFullYear(), d.getMonth(), d.getDate()), c = 0;
+    while (c < n) { r.setDate(r.getDate() + 1); if (dow(r) !== 6) c++; }
+    return r;
+  }
+  function fmtShort(d) { return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+  function fmtLong(d) { return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }); }
+  function getT(id) { return TEACHERS.filter(function (t) { return t.id === id; })[0]; }
+
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var nextId = 1;
+  var seed = [
+    [3, 'meera', 'Presentation', 'Prototype pitch to the panel'],
+    [7, 'arjun', 'Test', 'Segmentation and positioning'],
+    [11, 'kavya', 'Test', 'Probability and distributions'],
+    [16, 'sana', 'Assignment', 'Demand and supply case study'],
+    [20, 'daniel', 'Presentation', 'Group talk on a short story']
+  ];
+  var bookings = seed.map(function (s) { return { id: nextId++, date: key(addWd(today, s[0])), teacher: s[1], type: s[2], topic: s[3] }; });
+
+  var role = 'faculty', teacherId = 'arjun', selected = null, movingId = null, notice = '', ctx = null;
+  var view = { y: today.getFullYear(), m: today.getMonth() };
+
+  function statusOf(d, ignoreId) {
+    var k = key(d), w = wd(d);
+    if (w === null) return { state: 'closed' };
+    if (d <= today) return { state: 'past' };
+    var same = bookings.filter(function (b) { return b.date === k && b.id !== ignoreId; })[0];
+    if (same) return { state: 'booked', booking: same };
+    var near = null, nd = 99, ndiff = 0;
+    bookings.forEach(function (b) {
+      if (b.id === ignoreId) return;
+      var diff = w - wd(parse(b.date));
+      if (Math.abs(diff) <= GAP && Math.abs(diff) < nd) { near = b; nd = Math.abs(diff); ndiff = diff; }
+    });
+    if (near) return { state: 'gap', booking: near, diff: ndiff };
+    return { state: 'free' };
+  }
+
+  function renderCal() {
+    $('monthLabel').textContent = new Date(view.y, view.m, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    var first = new Date(view.y, view.m, 1), lead = dow(first), count = new Date(view.y, view.m + 1, 0).getDate(), h = '';
+    for (var i = 0; i < lead; i++) h += '<div aria-hidden="true"></div>';
+    for (var n = 1; n <= count; n++) {
+      var d = new Date(view.y, view.m, n), k = key(d), s = statusOf(d, movingId);
+      var cls = 'day' + (k === key(today) ? ' today' : '') + (k === selected ? ' sel' : '');
+      var inner = '<span class="num">' + n + '</span>', label = fmtLong(d);
+      if (s.state === 'booked') {
+        var t = getT(s.booking.teacher);
+        inner += '<span class="tag">' + t.code + '</span>';
+        label += ', ' + t.subject + ' ' + s.booking.type.toLowerCase();
+      } else if (s.state === 'gap') {
+        inner += '<span class="gaplbl">prep</span>';
+        label += ', preparation gap, no new CIE';
+      } else if (s.state === 'free') label += ', free';
+      else if (s.state === 'closed') label += ', no CIEs on Sundays';
+      else label += ', past';
+      var dis = (s.state === 'closed' || s.state === 'past') ? ' disabled' : '';
+      h += '<button type="button" class="' + cls + '" data-k="' + k + '" data-state="' + s.state + '" aria-pressed="' + (k === selected) + '" aria-label="' + esc(label) + '"' + dis + '>' + inner + '</button>';
+    }
+    $('grid').innerHTML = h;
+  }
+
+  function nearestFree(d) {
+    var out = [], f = new Date(d), b = new Date(d), i;
+    for (i = 0; i < 30; i++) { f.setDate(f.getDate() + 1); if (statusOf(f, movingId).state === 'free') { out.push(new Date(f)); break; } }
+    for (i = 0; i < 30; i++) { b.setDate(b.getDate() - 1); if (b <= today) break; if (statusOf(b, movingId).state === 'free') { out.unshift(new Date(b)); break; } }
+    return out;
+  }
+
+  function draftMsg(b, d, diff) {
+    var t = getT(b.teacher), me = getT(teacherId), when = fmtShort(parse(b.date)), why;
+    if (diff === 0) why = 'that day is already taken by your ' + t.subject + ' ' + b.type.toLowerCase() + ' (' + when + ')';
+    else if (diff > 0) why = 'it falls in the 2-day preparation gap after your ' + t.subject + ' ' + b.type.toLowerCase() + ' on ' + when;
+    else why = 'it falls in the 2-day preparation gap before your ' + t.subject + ' ' + b.type.toLowerCase() + ' on ' + when;
+    return 'Hi ' + t.name + ', this is ' + me.name + ' (' + me.subject + '). I would like to schedule a CIE on ' + fmtLong(d) + ', but ' + why + '. Could we sort out the dates together so students get enough time to prepare? Thanks!';
+  }
+
+  function contactHtml(b, d, diff) {
+    var t = getT(b.teacher);
+    ctx = { t: t, d: d };
+    return '<div class="contact"><p class="lbl">Need this day? Ask ' + esc(t.name) + '</p>' +
+      '<label class="sr" for="msg" style="position:absolute;left:-9999px">Message</label>' +
+      '<textarea id="msg">' + esc(draftMsg(b, d, diff)) + '</textarea>' +
+      '<div class="row"><button type="button" class="btn secondary" data-action="copy" id="copyBtn">Copy message</button>' +
+      '<a class="btn secondary" id="mail" href="#">Email</a></div>' +
+      '<p class="hint">Email: <span class="mono">' + esc(t.email) + '</span></p></div>';
+  }
+
+  function setLinks() {
+    var ta = $('msg'); if (!ta || !ctx) return;
+    var v = ta.value;
+    $('mail').href = 'mailto:' + ctx.t.email + '?subject=' + encodeURIComponent('CIE date on ' + fmtShort(ctx.d)) + '&body=' + encodeURIComponent(v);
+  }
+
+  function nearestHtml(d) {
+    var n = nearestFree(d);
+    if (!n.length) return '';
+    return '<div class="nearest">Nearest free days<div class="chips">' + n.map(function (x) { return '<button type="button" class="chip" data-action="pick" data-k="' + key(x) + '">' + fmtShort(x) + '</button>'; }).join('') + '</div></div>';
+  }
+
+  function renderPanel() {
+    var el = $('panel'), me = getT(teacherId), h = '';
+    ctx = null;
+    if (notice) h += '<p class="notice" role="status">' + esc(notice) + '</p>';
+    if (movingId) {
+      var mb = bookings.filter(function (b) { return b.id === movingId; })[0];
+      h += '<div class="banner">Moving the ' + esc(getT(mb.teacher).subject) + ' ' + esc(mb.type.toLowerCase()) + ' from ' + fmtShort(parse(mb.date)) + '. Pick a free day. <button type="button" class="link" data-action="cancelMove">Cancel move</button></div>';
+    }
+    if (!selected) {
+      h += role === 'faculty'
+        ? '<h2>Schedule a CIE</h2><p class="sub">Pick a free day on the calendar. You are booking as ' + esc(me.name) + '.</p>'
+        : '<h2>Your assessment calendar</h2><p class="sub">Tap a red day to see the subject, type and topic.</p>';
+      el.innerHTML = h + RULES;
+      return;
+    }
+    var d = parse(selected), s = statusOf(d, movingId);
+    h += '<h2>' + fmtLong(d) + '</h2>';
+    if (s.state === 'free') {
+      if (role === 'faculty') {
+        h += '<p class="sub ok">Free to book</p>';
+        if (movingId) {
+          h += '<p class="hint">The CIE moves here. The 2 working days on each side stay closed for other teachers.</p><button type="button" class="btn" data-action="confirmMove">Move CIE here</button>';
+        } else {
+          h += '<div class="field"><label for="f-subject">Subject</label><input id="f-subject" type="text" readonly value="' + esc(me.subject) + '"></div>' +
+            '<div class="field"><label for="f-type">Type</label><select id="f-type">' + TYPES.map(function (t) { return '<option>' + t + '</option>'; }).join('') + '</select></div>' +
+            '<div class="field"><label for="f-topic">Topic (optional)</label><input id="f-topic" type="text" maxlength="60" placeholder="e.g. Unit 2 quiz"></div>' +
+            '<p class="hint">Booking this closes the 2 working days before and after it for other teachers.</p>' +
+            '<button type="button" class="btn" data-action="confirmBook">Confirm booking</button>';
+        }
+      } else {
+        h += '<p class="sub">No CIE is scheduled on this day.</p>';
+      }
+    } else if (s.state === 'booked') {
+      var b = s.booking, t = getT(b.teacher);
+      h += '<p class="sub bk">CIE booked</p><dl class="kv">' +
+        '<div><dt>Subject</dt><dd>' + esc(t.subject) + '</dd></div>' +
+        '<div><dt>Type</dt><dd>' + esc(b.type) + '</dd></div>' +
+        '<div><dt>Teacher</dt><dd>' + esc(t.name) + '</dd></div>' +
+        '<div><dt>Topic</dt><dd>' + esc(b.topic) + '</dd></div></dl>';
+      if (role === 'faculty') {
+        if (b.teacher === teacherId) {
+          h += '<div class="row"><button type="button" class="btn secondary" data-action="move" data-id="' + b.id + '">Move</button><button type="button" class="btn danger" data-action="cancel" data-id="' + b.id + '">Cancel booking</button></div>';
+        } else {
+          h += contactHtml(b, d, 0) + nearestHtml(d);
+        }
+      }
+    } else if (s.state === 'gap') {
+      var gb = s.booking, gt = getT(gb.teacher), gw = fmtShort(parse(gb.date));
+      h += '<p class="sub">Preparation gap</p>';
+      h += '<p class="hint">' + (s.diff > 0
+        ? 'Students are preparing after the ' + esc(gt.subject) + ' ' + esc(gb.type.toLowerCase()) + ' on ' + gw + '.'
+        : 'Too close before the ' + esc(gt.subject) + ' ' + esc(gb.type.toLowerCase()) + ' on ' + gw + '. Students need 2 working days to prepare.') + ' No new CIE can be booked here.</p>';
+      if (role === 'faculty') {
+        if (gb.teacher !== teacherId) h += contactHtml(gb, d, s.diff);
+        h += nearestHtml(d);
+      }
+    }
+    el.innerHTML = h;
+    setLinks();
+  }
+
+  function minGap() {
+    var w = bookings.map(function (b) { return wd(parse(b.date)); }).sort(function (a, b) { return a - b; });
+    if (w.length < 2) return null;
+    var m = 1e9;
+    for (var i = 1; i < w.length; i++) m = Math.min(m, w[i] - w[i - 1]);
+    return m;
+  }
+
+  function renderList() {
+    $('listTitle').textContent = role === 'student' ? 'Your upcoming CIEs' : 'All scheduled CIEs';
+    var items = bookings.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    $('list').innerHTML = items.length ? items.map(function (b) {
+      var d = parse(b.date), t = getT(b.teacher);
+      return '<li><button type="button" class="item" data-k="' + b.date + '"><span class="dt"><b>' + d.getDate() + '</b><small>' + d.toLocaleDateString('en-GB', { month: 'short' }) + '</small></span>' +
+        '<span class="meta"><strong>' + esc(t.subject) + '</strong><span>' + esc(b.type) + ' &middot; ' + esc(t.name) + '</span></span><span class="tag">' + t.code + '</span></button></li>';
+    }).join('') : '<li class="sub">Nothing scheduled yet.</li>';
+    var g = minGap();
+    $('gapNote').textContent = g === null ? '' : 'Closest two CIEs are ' + g + ' working days apart.';
+  }
+
+  function renderTop() {
+    document.querySelectorAll('[data-role]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-role') === role)); });
+    $('teacherWrap').hidden = role !== 'faculty';
+  }
+
+  function renderAll() { renderTop(); renderCal(); renderPanel(); renderList(); }
+
+  function select(k) {
+    var d = parse(k);
+    view = { y: d.getFullYear(), m: d.getMonth() };
+    selected = k; notice = '';
+    renderAll();
+    if (window.matchMedia('(max-width: 899px)').matches) {
+      var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      $('panelCard').scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+    }
+  }
+
+  $('teacherSel').innerHTML = TEACHERS.map(function (t) { return '<option value="' + t.id + '">' + t.name + ' (' + t.subject + ')</option>'; }).join('');
+  $('teacherSel').value = teacherId;
+  $('teacherSel').addEventListener('change', function (e) { teacherId = e.target.value; movingId = null; notice = ''; renderAll(); });
+
+  document.querySelector('.seg').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-role]'); if (!b) return;
+    role = b.getAttribute('data-role'); movingId = null; notice = ''; renderAll();
+  });
+  $('grid').addEventListener('click', function (e) {
+    var b = e.target.closest('.day'); if (!b || b.disabled) return;
+    select(b.getAttribute('data-k'));
+  });
+  $('list').addEventListener('click', function (e) {
+    var b = e.target.closest('.item'); if (b) select(b.getAttribute('data-k'));
+  });
+  $('prev').addEventListener('click', function () { view = { y: view.m === 0 ? view.y - 1 : view.y, m: (view.m + 11) % 12 }; renderCal(); });
+  $('next').addEventListener('click', function () { view = { y: view.m === 11 ? view.y + 1 : view.y, m: (view.m + 1) % 12 }; renderCal(); });
+  $('todayBtn').addEventListener('click', function () { view = { y: today.getFullYear(), m: today.getMonth() }; renderCal(); });
+
+  $('panel').addEventListener('input', function (e) { if (e.target.id === 'msg') setLinks(); });
+  $('panel').addEventListener('click', function (e) {
+    var a = e.target.closest('[data-action]'); if (!a) return;
+    var act = a.getAttribute('data-action'), id = Number(a.getAttribute('data-id'));
+    if (act === 'pick') { select(a.getAttribute('data-k')); return; }
+    if (act === 'copy') {
+      var ta = $('msg'), btn = a;
+      var done = function (txt) { btn.textContent = txt; setTimeout(function () { btn.textContent = 'Copy message'; }, 2000); };
+      try {
+        navigator.clipboard.writeText(ta.value).then(function () { done('Copied'); }, function () { ta.focus(); ta.select(); done('Select and copy'); });
+      } catch (err) { ta.focus(); ta.select(); done('Select and copy'); }
+      return;
+    }
+    if (act === 'confirmBook') {
+      var d = parse(selected);
+      if (statusOf(d).state !== 'free') return;
+      var topic = ($('f-topic').value || '').trim() || 'Not added';
+      var type = $('f-type').value, me = getT(teacherId);
+      bookings.push({ id: nextId++, date: selected, teacher: teacherId, type: type, topic: topic });
+      notice = 'Booked: ' + me.subject + ' ' + type.toLowerCase() + ' on ' + fmtShort(d) + '. The next 2 working days are now closed for other teachers.';
+    } else if (act === 'cancel') {
+      bookings = bookings.filter(function (b) { return b.id !== id; });
+      notice = 'Booking cancelled. The day and its preparation gap are free again.';
+    } else if (act === 'move') {
+      movingId = id; selected = null; notice = '';
+    } else if (act === 'cancelMove') {
+      movingId = null; notice = '';
+    } else if (act === 'confirmMove') {
+      var bk = bookings.filter(function (b) { return b.id === movingId; })[0];
+      if (bk) { bk.date = selected; notice = 'CIE moved to ' + fmtShort(parse(selected)) + '.'; }
+      movingId = null;
+    }
+    renderAll();
+  });
+
+  renderAll();
+})();
+</script>
+
+</body></html>
